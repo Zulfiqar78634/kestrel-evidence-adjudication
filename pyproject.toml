@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kestrel-evidence-adjudication"
-version = "0.3.0"
+version = "0.3.1"
 description = "Evidence-first cold-chain review slice with replay; not a clinical decision system"
 readme = "README.md"
 requires-python = ">=3.10"

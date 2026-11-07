@@ -14,7 +14,9 @@ class WorkbookCatalog:
             self._sheets = {}
             for sheet in book:
                 iterator = sheet.iter_rows(values_only=True)
-                header = next(iterator)
+                header = next(iterator, None)
+                if header is None:
+                    raise ValueError("sheet has no header row: " + sheet.title)
                 rows = []
                 for i, values in enumerate(iterator, start=2):
                     record = {str(k): v.isoformat() if isinstance(v, (date, datetime)) else v

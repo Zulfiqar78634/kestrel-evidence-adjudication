@@ -1,11 +1,15 @@
 """Evidence candidate assembly. Discovery and blockers only: NOT clinical policy or approval."""
+import re
 from datetime import datetime
 from .domain import SourceRow, TenantScope, finite, gtin, normalized, utc
 from .ports import SourceCatalog
 from .tasks import derive_tasks
 
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 IDENTITY_FIELDS = ("internal_sku", "brand_as_labelled", "generic_inn", "legacy_code")
+# Whole words only: "pen" must not match inside "Penicillin", nor "vial" inside "trivial".
+PEN_WORDS = re.compile(r"\b(pen|solojet)\b")
+VIAL_WORD = re.compile(r"\bvial\b")
 
 
 def product_matches(event: SourceRow, product: SourceRow) -> bool:
@@ -54,7 +58,7 @@ def assemble(catalog: SourceCatalog, event: SourceRow, tenant: str) -> dict:
             if not (cited or (molecule and molecule in text) or (tokens and tokens & set(text.split()))):
                 continue
             reasons = []
-            if ("pen" in brand or "solojet" in brand) and "vial" in text:
+            if PEN_WORDS.search(brand) and VIAL_WORD.search(text):
                 reasons.append("PRESENTATION_CONFLICT")
             if "excursion" not in normalized(row.get("study_type")):
                 reasons.append("NOT_EXCURSION_STUDY")
@@ -100,11 +104,17 @@ def assemble(catalog: SourceCatalog, event: SourceRow, tenant: str) -> dict:
     return result
 
 
-def snapshot(catalog: SourceCatalog, event: SourceRow, tenant: str) -> dict:
+def snapshot(event: SourceRow, tenant: str, result: dict) -> dict:
+    """Capture the alert row and only the rows this result used.
+
+    Replay re-runs assembly on exactly these rows, so it reproduces the result without the workbook.
+    Unrelated rows are left out: the bundle stays small and holds no extra tenant data.
+    """
     TenantScope(tenant).check(event)
     return {"event": event.snapshot(), "tables": {
-        name: [r.snapshot() for r in catalog.rows(name) if r.values.get("tenant_code") == tenant]
-        for name in ("02_Product_Master", "05_SOP_Index", "06_Stability_Index")}}
+        "02_Product_Master": list(result["product_candidates"]),
+        "05_SOP_Index": list(result["sop_candidates"]),
+        "06_Stability_Index": [c["source"] for c in result["study_candidates"]]}}
 
 
 class FrozenCatalog:
@@ -114,4 +124,6 @@ class FrozenCatalog:
                        for name, rows in captured["tables"].items()}
 
     def rows(self, name):
+        if name not in self.tables:
+            raise ValueError("unknown sheet: " + name)
         return self.tables[name]

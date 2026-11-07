@@ -1,6 +1,7 @@
 """Local operator CLI. --tenant is local scope, not authenticated identity."""
 import argparse
 import json
+import sys
 from pathlib import Path
 from .service import ReviewService, replay
 from .storage import SQLiteRepository
@@ -15,6 +16,7 @@ def main():
     run.add_argument("workbook")
     run.add_argument("--event")
     run.add_argument("--tenant")
+    run.add_argument("--all-tenants", action="store_true", help="operator only: review every tenant in the workbook")
     run.add_argument("--out", required=True)
     again = commands.add_parser("replay")
     again.add_argument("bundle")
@@ -22,6 +24,8 @@ def main():
     queue = commands.add_parser("obligations")
     queue.add_argument("--tenant", required=True)
     args = parser.parse_args()
+    if args.command == "review" and not (args.tenant or args.all_tenants):
+        parser.error("review needs --tenant TENANT, or --all-tenants to review every tenant")
     repository = SQLiteRepository(args.db)
     try:
         if args.command == "review":
@@ -41,9 +45,13 @@ def main():
             print(json.dumps(replay(repository, args.tenant, args.bundle), indent=2))
         else:
             print(json.dumps(repository.obligations(args.tenant), indent=2))
+    except (PermissionError, LookupError, ValueError, KeyError) as exc:
+        print(json.dumps({"error": type(exc).__name__, "message": str(exc)}), file=sys.stderr)
+        return 2
     finally:
         repository.close()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -22,7 +22,7 @@ SHEETS = {
     "02_Product_Master": [
         ["tenant_code", "brand_as_labelled", "generic_inn", "internal_sku", "gtin", "legacy_code",
          "permitted_excursion_text", "stability_study_ref"],
-        ["T-DEMO-A", "Demopen 100U", "democillin-x", "SKU-DEMO-1", "08900000000017", None,
+        ["T-DEMO-A", "Demo Pen 100U", "democillin-x", "SKU-DEMO-1", "08900000000017", None,
          "Cumulative 10 h above 8 C (synthetic)", "STB-D2"],
         ["T-DEMO-B", "Demoflu Q", "flu-demo", "SKU-DEMO-2", "08900000000024", None, None, "STB-D9"],
     ],
@@ -34,10 +34,10 @@ SHEETS = {
     ],
     "06_Stability_Index": [
         ["study_ref", "product_text_as_written", "tenant_code", "study_type", "permitted_excursion_text", "readable"],
-        ["STB-D1", "Demopen 100U pen", "T-DEMO-A", "Excursion / thermal cycling",
+        ["STB-D1", "Demo Pen 100U pen", "T-DEMO-A", "Excursion / thermal cycling",
          "One excursion, up to 2 h below 12 C (synthetic)", "Y"],
-        ["STB-D2", "Demopen vial democillin-x", "T-DEMO-A", "Accelerated", None, "Partial"],
-        ["STB-D3", "Demopen 100U vial", "T-DEMO-A", "Excursion / thermal cycling",
+        ["STB-D2", "Demo Pen vial democillin-x", "T-DEMO-A", "Accelerated", None, "Partial"],
+        ["STB-D3", "Demo Pen 100U vial", "T-DEMO-A", "Excursion / thermal cycling",
          "No excursion above 20 C (synthetic)", "Y"],
         ["STB-D9", "Demoflu Q", "T-DEMO-B", "Excursion", "Synthetic text only", "Y"],
     ],

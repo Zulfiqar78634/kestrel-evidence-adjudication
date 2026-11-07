@@ -11,7 +11,7 @@ class ReviewService:
     def review(self, event: SourceRow, tenant: str):
         self.repository.register_obligation(event, tenant)
         result = assemble(self.catalog, event, tenant)
-        payload = {"version": VERSION, "captured": snapshot(self.catalog, event, tenant), "result": result}
+        payload = {"version": VERSION, "captured": snapshot(event, tenant, result), "result": result}
         return {"bundle_id": self.repository.save(tenant, payload), "result": result}
 
 

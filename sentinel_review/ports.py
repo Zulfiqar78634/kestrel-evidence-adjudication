@@ -4,6 +4,8 @@ from .domain import SourceRow
 
 
 class SourceCatalog(Protocol):
+    """Read-only source rows. rows() must raise ValueError for a sheet it does not have."""
+
     def rows(self, sheet: str) -> tuple[SourceRow, ...]: ...
 
 
