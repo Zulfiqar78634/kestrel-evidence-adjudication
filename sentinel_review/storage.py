@@ -39,7 +39,8 @@ class SQLiteRepository:
     def obligations(self, tenant):
         cols = ("event_id", "reportability", "due_utc", "state", "basis")
         return [dict(zip(cols, r)) for r in self.db.execute(
-            "SELECT event_id,reportability,due_utc,state,basis FROM obligations WHERE tenant=? ORDER BY due_utc,event_id",
+            "SELECT event_id,reportability,due_utc,state,basis FROM obligations "
+            "WHERE tenant=? ORDER BY due_utc,event_id",
             (tenant,))]
 
     def save(self, tenant, payload):
