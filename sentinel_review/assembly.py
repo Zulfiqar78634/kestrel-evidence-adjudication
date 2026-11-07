@@ -2,8 +2,9 @@
 from datetime import datetime
 from .domain import SourceRow, TenantScope, finite, gtin, normalized, utc
 from .ports import SourceCatalog
+from .tasks import derive_tasks
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 IDENTITY_FIELDS = ("internal_sku", "brand_as_labelled", "generic_inn", "legacy_code")
 
 
@@ -90,11 +91,13 @@ def assemble(catalog: SourceCatalog, event: SourceRow, tenant: str) -> dict:
         blockers.append("NO_DATED_SOP_CANDIDATE")
     if event.values.get("logger_fw") == "TT-2.14.3":
         blockers.append("BULLETIN_APPLICABILITY_AND_SENSITIVITY_REQUIRE_REVIEW")
-    return {"event_id": event.values.get("event_id"), "tenant": tenant, "version": VERSION,
-            "status": "BLOCKED", "final_disposition": None, "measurement": measurement,
-            "blockers": sorted(set(blockers)), "product_candidates": [p.snapshot() for p in products],
-            "study_candidates": studies, "sop_candidates": sops, "overlapping_doc_ids": overlaps,
-            "historical_classification_used_as_proof": False}
+    result = {"event_id": event.values.get("event_id"), "tenant": tenant, "version": VERSION,
+              "status": "BLOCKED", "final_disposition": None, "measurement": measurement,
+              "blockers": sorted(set(blockers)), "product_candidates": [p.snapshot() for p in products],
+              "study_candidates": studies, "sop_candidates": sops, "overlapping_doc_ids": overlaps,
+              "historical_classification_used_as_proof": False}
+    result["resolution_tasks"] = derive_tasks({"sheet": event.sheet, "row": event.row}, result)
+    return result
 
 
 def snapshot(catalog: SourceCatalog, event: SourceRow, tenant: str) -> dict:
