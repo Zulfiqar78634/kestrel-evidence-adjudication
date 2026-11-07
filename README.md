@@ -57,6 +57,9 @@ flowchart TD
 * **Tamper-Evident Storage:** Saved case bundles are content-addressed using cryptographic SHA-256 digests. Replay executes against the exact captured source rows.
 * **Role-Assigned Tasks:** Every blocker emits a concrete task assigned to a functional role (e.g., `Site QA`, `Document Control`), never an invented named person.
 * **JWT Authentication:** Every API endpoint requires a valid Bearer token with tenant and role claims. Tenant is extracted from the token, never from a query parameter.
+* **Notification Outbox:** Regulatory notifications are queued in an outbox with retry/backoff, delivered asynchronously, and never block the main flow.
+* **Independent Pager:** A separate paging channel fires independently of the primary notification, ensuring critical alerts are never missed.
+* **WORM Archive:** Evidence bundles are written to an append-only archive with retention policy enforcement (7 years default).
 
 ---
 
@@ -70,7 +73,7 @@ git clone https://github.com/Zulfiqar78634/kestrel-evidence-adjudication.git
 cd kestrel-evidence-adjudication
 python -m pip install -e ".[dev]"
 
-# 2. Run comprehensive test suite (49 unit & regression tests)
+# 2. Run comprehensive test suite (55+ unit & regression tests)
 python -m unittest discover -s tests -v
 
 # 3. Generate a synthetic demo workbook

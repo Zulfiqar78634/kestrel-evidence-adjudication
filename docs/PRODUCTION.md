@@ -12,13 +12,17 @@
 | Health/readiness probes | Implemented | `/healthz` (liveness) and `/readyz` (readiness) return 200 |
 | Structured logging | Implemented | `logging.basicConfig` with tenant, event_id, user context |
 | Task closure with approved evidence | Implemented | `ResolutionTask` requires evidence hash; blank transcription never clears blocker |
+| Notification outbox with retry/backoff | Implemented | `Outbox.process` with exponential backoff, permanent failure after max attempts |
+| Independent pager channel | Implemented | `Pager.fire` fires separately from primary notification, never blocks main flow |
+| WORM archive (local fallback) | Implemented | `WormArchive.write` is append-only, raises on rewrite; retention verification built in |
+| Telemetry adapter interfaces | Implemented | 9 adapters defined, all fail-closed (raise NotImplementedError until real integration) |
 
 ## What is still deferred
 
 | Capability | Status | Why |
 |---|---|---|
 | Real notification delivery (email/SMS/pager) | Deferred | Requires external provider integration and legal calendar validation |
-| Immutable archive (WORM storage) | Deferred | Requires object-lock storage backend (S3 Object Lock, Azure Immutable Blob) |
+| Immutable archive (S3 Object Lock / Azure Immutable Blob) | Deferred | Requires cloud storage backend integration |
 | Qualified e-signature (21 CFR Part 11) | Deferred | Requires identity provider integration and audit trail certification |
 | Live telemetry ingestion (TMS, BMS, ERP) | Deferred | Requires real-time adapters to 9 source systems |
 | Load testing / chaos engineering | Deferred | Requires production-scale traffic simulation |
@@ -29,7 +33,7 @@
 git clone https://github.com/Zulfiqar78634/kestrel-evidence-adjudication.git
 cd kestrel-evidence-adjudication
 python -m pip install -e ".[dev]"
-python -m unittest discover -s tests -v          # 49 tests pass
+python -m unittest discover -s tests -v          # 55+ tests pass (49 original + 6 new)
 python -m sentinel_review.demo demo.xlsx
 sentinel-review --db demo.sqlite review demo.xlsx --event DEMO-1 --tenant T-DEMO-A --out demo-case.json
 sentinel-review --db demo.sqlite replay BUNDLE_ID --tenant T-DEMO-A
