@@ -1,0 +1,56 @@
+# Production Readiness Guide
+
+## What is production-ready now
+
+| Capability | Status | How to verify |
+|---|---|---|
+| JWT authentication with tenant claim | Implemented | `POST /v1/cases/{id}` with Bearer token; wrong tenant returns 403 |
+| Role-based access (viewer/reviewer/admin) | Implemented | `Principal.can(role)` hierarchy enforced |
+| PostgreSQL adapter | Implemented | `PostgresRepository` with SQLAlchemy async, connection pooling, transactional writes |
+| Docker multi-stage build | Implemented | `docker build -t kestrel .` succeeds; non-root user; HEALTHCHECK |
+| CI pipeline | Implemented | `.github/workflows/ci.yml` runs ruff, mypy, pytest with coverage, Docker build |
+| Health/readiness probes | Implemented | `/healthz` (liveness) and `/readyz` (readiness) return 200 |
+| Structured logging | Implemented | `logging.basicConfig` with tenant, event_id, user context |
+| Task closure with approved evidence | Implemented | `ResolutionTask` requires evidence hash; blank transcription never clears blocker |
+
+## What is still deferred
+
+| Capability | Status | Why |
+|---|---|---|
+| Real notification delivery (email/SMS/pager) | Deferred | Requires external provider integration and legal calendar validation |
+| Immutable archive (WORM storage) | Deferred | Requires object-lock storage backend (S3 Object Lock, Azure Immutable Blob) |
+| Qualified e-signature (21 CFR Part 11) | Deferred | Requires identity provider integration and audit trail certification |
+| Live telemetry ingestion (TMS, BMS, ERP) | Deferred | Requires real-time adapters to 9 source systems |
+| Load testing / chaos engineering | Deferred | Requires production-scale traffic simulation |
+
+## Local verification (no private data needed)
+
+```bash
+git clone https://github.com/Zulfiqar78634/kestrel-evidence-adjudication.git
+cd kestrel-evidence-adjudication
+python -m pip install -e ".[dev]"
+python -m unittest discover -s tests -v          # 49 tests pass
+python -m sentinel_review.demo demo.xlsx
+sentinel-review --db demo.sqlite review demo.xlsx --event DEMO-1 --tenant T-DEMO-A --out demo-case.json
+sentinel-review --db demo.sqlite replay BUNDLE_ID --tenant T-DEMO-A
+```
+
+## Production deployment (Docker Compose)
+
+```bash
+docker compose up --build
+# App runs on http://localhost:8000
+# Health: curl http://localhost:8000/healthz
+# Ready: curl http://localhost:8000/readyz
+# Review a case: curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8000/v1/cases/EXC-107133
+```
+
+## CI verification
+
+Push to `main` triggers `.github/workflows/ci.yml`:
+1. `ruff check sentinel_review` — lint gate
+2. `mypy sentinel_review` — type gate
+3. `coverage run -m unittest discover -s tests` + `coverage report --fail-under=80` — test gate
+4. `docker build` — container gate
+
+All four gates must pass for a green build.

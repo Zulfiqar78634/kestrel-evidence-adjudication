@@ -56,6 +56,7 @@ flowchart TD
 * **Separation of Clocks:** The health authority reporting window (e.g. 72h) is registered *before* case assembly. Signing a product disposition never erases or closes a regulatory filing obligation.
 * **Tamper-Evident Storage:** Saved case bundles are content-addressed using cryptographic SHA-256 digests. Replay executes against the exact captured source rows.
 * **Role-Assigned Tasks:** Every blocker emits a concrete task assigned to a functional role (e.g., `Site QA`, `Document Control`), never an invented named person.
+* **JWT Authentication:** Every API endpoint requires a valid Bearer token with tenant and role claims. Tenant is extracted from the token, never from a query parameter.
 
 ---
 
@@ -88,6 +89,16 @@ sentinel-review --db demo.sqlite replay BUNDLE_ID --tenant T-DEMO-B
 sentinel-review --db demo.sqlite obligations --tenant T-DEMO-B
 ```
 
+## Production Deployment (Docker Compose)
+
+```bash
+docker compose up --build
+# App runs on http://localhost:8000
+# Health: curl http://localhost:8000/healthz
+# Ready: curl http://localhost:8000/readyz
+# Review a case: curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8000/v1/cases/EXC-107133
+```
+
 ---
 
 ## Documentation Index
@@ -96,6 +107,7 @@ sentinel-review --db demo.sqlite obligations --tenant T-DEMO-B
 |---|---|---|
 | **Overview** | [docs/START-HERE.md](docs/START-HERE.md) | Plain-language introduction, mental models, and quickstart tutorial. |
 | **Architecture** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | SOLID design principles, system layers, and regulatory invariants. |
+| **Production** | [docs/PRODUCTION.md](docs/PRODUCTION.md) | Production readiness, deployment, and CI verification. |
 | **Decisions** | [docs/adr/0001-blocked-by-default.md](docs/adr/0001-blocked-by-default.md) | Architecture Decision Record: Why all outputs are BLOCKED by default. |
 | **Technical Design** | [docs/LLD.md](docs/LLD.md) | Low-level design, schema specifications, and persistence models. |
 | **Audit Tasks** | [docs/RESOLUTION-TASKS.md](docs/RESOLUTION-TASKS.md) | Specification of the 14 resolution task templates and completion rules. |
