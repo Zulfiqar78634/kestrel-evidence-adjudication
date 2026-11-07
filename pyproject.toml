@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kestrel-evidence-adjudication"
+version = "0.2.0"
+description = "Evidence-first cold-chain review slice with replay; not a clinical decision system"
+requires-python = ">=3.10"
+dependencies = ["openpyxl>=3.1,<4"]
+
+[project.scripts]
+sentinel-review = "sentinel_review.cli:main"
+
+[tool.setuptools]
+py-modules = ["kestrel"]
+
+[tool.setuptools.packages.find]
+include = ["sentinel_review*"]

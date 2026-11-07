@@ -1,32 +1,26 @@
 # Kestrel Evidence Adjudication
 
-Independent evidence-first case-study kernel. Runnable offline with synthetic data; Python 3.10+, standard library only. A bounded working slice, not a completed production platform.
+Evidence-first case-study submission for Kestrel's "The Adjudication Problem". It assembles reviewer-ready evidence packages from the supplied workbook, keeps unresolved authority explicit, and reproduces each package from captured inputs. It never releases, destroys or signs product and is not a validated clinical system.
 
-## Quick start
+## Contents
+- `sentinel_review/` (v0.2.0): modular slice. `domain` (pure helpers), `ports` (interfaces), `workbook` (adapter), `assembly` (candidates + blockers), `storage` (SQLite), `service` (use cases), `cli`.
+- `kestrel.py` + `tests/test_kernel.py`, `tests/test_integration.py`: earlier single-file synthetic evidence-readiness kernel (v0.1.0), kept for history.
+- `docs/POSITION.md` (A), `docs/HLD.md` + `docs/LLD.md` (B), `docs/VALIDATION.md` (C), `docs/AI-WORKING-LOG.md` (D).
+
+## Run
 ```sh
-git clone https://github.com/Zulfiqar78634/kestrel-evidence-adjudication
-cd kestrel-evidence-adjudication
+python -m pip install -e .
 python -m unittest discover -s tests -v
-python kestrel.py --db demo.sqlite demo
+# Optional: enable the original-workbook test (the workbook is private and NOT in this repo)
+KCCS_WORKBOOK=/private/KCCS_Sentinel_Reference_Data_Pack.xlsx python -m unittest discover -s tests -v
+python -m sentinel_review.cli --db run.sqlite review /private/KCCS_Sentinel_Reference_Data_Pack.xlsx --event EXC-107133 --tenant T-KAVERI --out case.json
+python -m sentinel_review.cli --db run.sqlite replay BUNDLE_ID --tenant T-KAVERI
+python -m sentinel_review.cli --db run.sqlite obligations --tenant T-KAVERI
 ```
-The demo evaluates a synthetic case, saves it and replays the snapshot. For JSON input schema see demo() in kestrel.py.
-```sh
-python kestrel.py --db demo.sqlite evaluate case.json --tenant demo
-python kestrel.py --db demo.sqlite replay SNAPSHOT_ID --tenant demo
-```
+Without the workbook the original-data test is skipped. Do not commit generated `case.json` or SQLite files; they contain real case data.
 
-## Verified behavior
-33 local tests passed on Python 3.12.8. Tests include real CLI subprocesses, persisted restart/replay, wrong-tenant denial, missing readings, time/applicability conflicts, strict/one-sided limits, uncertainty, input preservation and tampering. Details and limitations: [verification report](docs/verification.md).
-A GitHub Actions matrix is supplied for Python 3.10-3.13; remote success must be checked separately.
+## What it does today
+Tenant-scoped product, study and SOP candidate discovery with workbook sheet/row provenance; explicit rejection reasons and blockers; historical triage never used as proof; imported reportability references admitted before assembly; captured-input snapshots, integrity check and replay without the workbook.
 
-## Decision boundary
-EVIDENCE_INCOMPLETE: unresolved facts or authority.
-CLOSURE_CANDIDATE: supplied envelopes pass and extrema are within bounds; not an executed closure.
-READY_FOR_QA: evidence-envelope checks pass and the excursion requires human assessment.
-No product release, destruction, notification or qualified signature is performed. Historical triage never authorizes closure.
-
-## Explicit trust boundary
-Approved booleans are input assertions. Hashes are format-checked, not verified against original source bytes. Synthetic hashes are placeholders. Caller tenant is local scope, not authenticated identity. No authoritative identity registry, complete schema validation, raw-series verification, original-workbook integration, batch ledger, notification/calendar service, qualified signing or immutable archive is implemented. Do not expose this CLI as an authenticated multi-user service.
-
-## Submission status
-This repository is not yet the complete requested assignment or a production-qualified implementation. Local tests do not establish clinical correctness or scale. Further architecture/report material was supplied separately in the conversation and is not yet published here. No confidential PDF/workbook or third-party source is included.
+## What it does not do
+No authenticated API or roles, no qualified or dual signing, no source-document verification, no approved identity mapping, no batch/once-only ledger, no calendar or notification delivery, no immutable archive, no measured scale. Every one of the 420 sample events ends BLOCKED by design. See `docs/VALIDATION.md` for what was and was not executed.
