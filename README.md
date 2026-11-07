@@ -1,27 +1,32 @@
 # Kestrel Evidence Adjudication
 
-Independent, offline evidence-readiness kernel. Python 3.10+, standard library only. No clinical or production certification.
+Independent evidence-first case-study kernel. Runnable offline with synthetic data; Python 3.10+, standard library only. A bounded working slice, not a completed production platform.
 
-## Run
+## Quick start
 ```sh
+git clone https://github.com/Zulfiqar78634/kestrel-evidence-adjudication
+cd kestrel-evidence-adjudication
 python -m unittest discover -s tests -v
 python kestrel.py --db demo.sqlite demo
+```
+The demo evaluates a synthetic case, saves it and replays the snapshot. For JSON input schema see demo() in kestrel.py.
+```sh
 python kestrel.py --db demo.sqlite evaluate case.json --tenant demo
 python kestrel.py --db demo.sqlite replay SNAPSHOT_ID --tenant demo
 ```
-The demo creates synthetic input, evaluates it, saves a snapshot and verifies identical replay. See `demo()` for the input schema.
 
-## What works
-Explicit unknown measurements; strict/inclusive and one/two-sided limits; Decimal comparisons; under-reading uncertainty envelope; tenant/product/site/presentation evidence-envelope checks; dated applicability; unresolved exposure policies; deterministic results; atomic SQLite snapshots and scoped replay. Historical triage does not authorize closure.
+## Verified behavior
+33 local tests passed on Python 3.12.8. Tests include real CLI subprocesses, persisted restart/replay, wrong-tenant denial, missing readings, time/applicability conflicts, strict/one-sided limits, uncertainty, input preservation and tampering. Details and limitations: [verification report](docs/verification.md).
+A GitHub Actions matrix is supplied for Python 3.10-3.13; remote success must be checked separately.
 
-## Output boundaries
-EVIDENCE_INCOMPLETE means unresolved evidence. CLOSURE_CANDIDATE is not executed closure or product release. READY_FOR_QA is not proof of clinical safety. All product dispositions remain human-required.
+## Decision boundary
+EVIDENCE_INCOMPLETE: unresolved facts or authority.
+CLOSURE_CANDIDATE: supplied envelopes pass and extrema are within bounds; not an executed closure.
+READY_FOR_QA: evidence-envelope checks pass and the excursion requires human assessment.
+No product release, destruction, notification or qualified signature is performed. Historical triage never authorizes closure.
 
-## Trust and limitations
-Approved booleans are trusted-input assertions, not authenticated approvals. Source hashes are format-checked, not verified against original bytes; demo hashes are placeholders. Caller tenant is local scope, not authentication. The kernel does not prove supplied measurements or instructions came from the referenced sources. No authoritative identity registry, original-workbook integration, raw-series completeness, batch ledger, legal notification service, qualified signing, immutable archive or load-tested deployment is implemented. Do not expose this CLI as a multi-user service.
+## Explicit trust boundary
+Approved booleans are input assertions. Hashes are format-checked, not verified against original source bytes. Synthetic hashes are placeholders. Caller tenant is local scope, not authenticated identity. No authoritative identity registry, complete schema validation, raw-series verification, original-workbook integration, batch ledger, notification/calendar service, qualified signing or immutable archive is implemented. Do not expose this CLI as an authenticated multi-user service.
 
-## Actual validation
-Locally executed on Python 3.12.8: 23 tests passed; CLI demo saved and replayed identically. Other Python versions, GitHub CI, Docker, original-data evaluation and load testing have not been verified.
-
-## Delivery status
-First runnable slice, not the complete assignment submission. Design/report/operations/AI-log documents are supplied in the accompanying chat ZIP and are not yet committed here. No confidential PDF/workbook or third-party implementation is published.
+## Submission status
+This repository is not yet the complete requested assignment or a production-qualified implementation. Local tests do not establish clinical correctness or scale. Further architecture/report material was supplied separately in the conversation and is not yet published here. No confidential PDF/workbook or third-party source is included.
