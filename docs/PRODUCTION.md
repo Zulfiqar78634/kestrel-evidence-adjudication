@@ -20,6 +20,9 @@
 | Mock notification providers (email/SMS/pager) | Implemented | `MockEmailProvider`, `MockSmsProvider`, `MockPagerProvider` log instead of send, no external API needed |
 | Mock WORM archive (in-memory) | Implemented | `MockWormArchive` uses in-memory dict, write-once semantics enforced |
 | End-to-end integration test | Implemented | `test_full_flow_mock` verifies enqueue -> dispatch -> SENT state |
+| Load testing (Locust) | Implemented | `load_test/locustfile.py` simulates concurrent users on review/replay/health endpoints |
+| Chaos engineering (network/DB/provider failure) | Implemented | `load_test/chaos.py` simulates network, DB, notification provider, telemetry failures |
+| Local verification script | Implemented | `load_test/verify_local.sh` runs full end-to-end verification in one command |
 
 ## What is still deferred
 
@@ -29,18 +32,23 @@
 | Immutable archive (S3 Object Lock / Azure Immutable Blob) | Deferred | Requires cloud storage backend integration |
 | Qualified e-signature (21 CFR Part 11) | Deferred | Requires identity provider integration and audit trail certification |
 | Live telemetry ingestion (TMS, BMS, ERP) | Deferred | Requires real-time adapters to 9 source systems |
-| Load testing / chaos engineering | Deferred | Requires production-scale traffic simulation |
+| Production-scale load test (real traffic) | Deferred | Requires production-scale traffic simulation with real data |
 
 ## Local verification (no private data, no API keys needed)
 
 ```bash
+# One-command verification
+bash load_test/verify_local.sh
+
+# Or step by step
 git clone https://github.com/Zulfiqar78634/kestrel-evidence-adjudication.git
 cd kestrel-evidence-adjudication
 python -m pip install -e ".[dev]"
-python -m unittest discover -s tests -v          # 65+ tests pass (49 original + 9 notification + 3 archive + 1 telemetry + 5 mock notification + 3 mock archive + 2 mock telemetry)
+python -m unittest discover -s tests -v          # 70+ tests pass
 python -m sentinel_review.demo demo.xlsx
 sentinel-review --db demo.sqlite review demo.xlsx --event DEMO-1 --tenant T-DEMO-A --out demo-case.json
 sentinel-review --db demo.sqlite replay BUNDLE_ID --tenant T-DEMO-A
+python -m unittest load_test.chaos -v            # chaos tests pass
 ```
 
 ## Production deployment (Docker Compose)
@@ -51,6 +59,22 @@ docker compose up --build
 # Health: curl http://localhost:8000/healthz
 # Ready: curl http://localhost:8000/readyz
 # Review a case: curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8000/v1/cases/EXC-107133
+```
+
+## Load testing (Locust)
+
+```bash
+pip install locust
+locust -f load_test/locustfile.py --host=http://localhost:8000 --headless -u 10 -r 2 -t 30s
+# Simulates 10 concurrent users, 2 users/sec ramp, 30 second duration
+```
+
+## Chaos engineering
+
+```bash
+python -m unittest load_test.chaos -v
+# Tests: network failure, DB failure, notification provider failure, telemetry failure
+# All scenarios verify fail-closed behavior and graceful degradation
 ```
 
 ## CI verification

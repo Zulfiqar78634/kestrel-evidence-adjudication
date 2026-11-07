@@ -61,6 +61,8 @@ flowchart TD
 * **Independent Pager:** A separate paging channel fires independently of the primary notification, ensuring critical alerts are never missed.
 * **WORM Archive:** Evidence bundles are written to an append-only archive with retention policy enforcement (7 years default).
 * **Mock Providers for Local/CI:** All external integrations (telemetry, email, SMS, pager, archive) have mock implementations that work without API keys, enabling full local testing and CI without credentials.
+* **Load Testing:** Locust-based load test simulates production-scale traffic on review, replay, and health endpoints.
+* **Chaos Engineering:** Network, DB, notification provider, and telemetry failure scenarios verify fail-closed behavior and graceful degradation.
 
 ---
 
@@ -69,28 +71,18 @@ flowchart TD
 No private data, no API keys, no cloud account required:
 
 ```bash
-# 1. Clone repository and install dependencies
+# One-command verification
+bash load_test/verify_local.sh
+
+# Or step by step
 git clone https://github.com/Zulfiqar78634/kestrel-evidence-adjudication.git
 cd kestrel-evidence-adjudication
 python -m pip install -e ".[dev]"
-
-# 2. Run comprehensive test suite (65+ unit & regression tests)
-python -m unittest discover -s tests -v
-
-# 3. Generate a synthetic demo workbook
+python -m unittest discover -s tests -v          # 70+ tests pass
 python -m sentinel_review.demo demo.xlsx
-
-# 4. Review a case and generate an immutable evidence bundle
 sentinel-review --db demo.sqlite review demo.xlsx --event DEMO-1 --tenant T-DEMO-A --out demo-case.json
-
-# 5. Verify deterministic replay from content-addressed storage
 sentinel-review --db demo.sqlite replay BUNDLE_ID --tenant T-DEMO-A
-
-# 6. Verify cross-tenant isolation enforcement (Fails with Exit Code 2)
-sentinel-review --db demo.sqlite replay BUNDLE_ID --tenant T-DEMO-B
-
-# 7. Inspect regulatory notification obligations
-sentinel-review --db demo.sqlite obligations --tenant T-DEMO-B
+python -m unittest load_test.chaos -v            # chaos tests pass
 ```
 
 ## Production Deployment (Docker Compose)
@@ -101,6 +93,22 @@ docker compose up --build
 # Health: curl http://localhost:8000/healthz
 # Ready: curl http://localhost:8000/readyz
 # Review a case: curl -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8000/v1/cases/EXC-107133
+```
+
+## Load Testing (Locust)
+
+```bash
+pip install locust
+locust -f load_test/locustfile.py --host=http://localhost:8000 --headless -u 10 -r 2 -t 30s
+# Simulates 10 concurrent users, 2 users/sec ramp, 30 second duration
+```
+
+## Chaos Engineering
+
+```bash
+python -m unittest load_test.chaos -v
+# Tests: network failure, DB failure, notification provider failure, telemetry failure
+# All scenarios verify fail-closed behavior and graceful degradation
 ```
 
 ---
