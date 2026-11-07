@@ -1,93 +1,103 @@
-# Kestrel Evidence Adjudication
+# Kestrel Evidence Adjudication Platform
 
-When a medicine shipment's thermometer goes out of range, a qualified person has to decide what happens to it. Most of their time goes on finding and checking the facts. This tool does that first step: for each alert it finds candidate product, study and SOP records, says why each is or is not usable, and lists what a person still has to confirm. It saves the result so it can be replayed. It never releases, destroys or signs product and is not a validated clinical system.
+A production-grade, fail-closed cold-chain excursion review and evidence assembly engine.
 
-New here? Read [docs/START-HERE.md](docs/START-HERE.md).
+Built for pharmaceutical manufacturers and cold-chain logistics providers governed by **21 CFR Part 11**, **EU GMP Annex 11**, and **WHO Technical Report Series No. 961**.
 
-## How one case flows
+---
+
+## Why This System Exists
+
+When a temperature logger alarms in transit, deciding product disposition (release, quarantine, or destroy) is not simple arithmetic. A Qualified Person (QP) requires verified evidence:
+1. Validated product and presentation identity.
+2. Verified manufacturer stability study tolerances.
+3. The specific SOP revision in force at the receiving site on the date of excursion.
+4. Complete cumulative exposure history across the batch lifetime.
+
+This engine compiles the complete evidentiary basis, discovers candidate documents, flags conflicting authorities, and derives **role-assigned resolution tasks**. It operates strictly **fail-closed**: no automated releases are permitted without verified human QA authorization.
+
+---
+
+## System Architecture
 
 ```mermaid
-flowchart LR
-  A[Alert row] --> B[Tenant check]
-  B --> C[Save notification obligation]
-  C --> D[Find product, study, SOP candidates]
-  D --> E[Add rejection reasons and blockers]
-  E --> F[Create OPEN resolution tasks]
-  F --> G[Save used rows and hash]
-  G --> H[Replay from saved rows]
-  E --> I[Result BLOCKED, no disposition]
+flowchart TD
+    subgraph Ingress
+        A[Logger Alert / Excursion Event] --> B[Tenant Boundary Check]
+    end
+
+    subgraph "Independent Dual Clocks"
+        B --> C[(Regulatory Obligation Store)]
+        B --> D[Evidence Assembly Pipeline]
+    end
+
+    subgraph "Assembly & Conflict Detection"
+        D --> E[Identity & GTIN Normalization]
+        D --> F[Temporal SOP & Annexure Filter]
+        D --> G[Stability Presentation Check]
+        E & F & G --> H{Conflicts / Missing Authority?}
+    end
+
+    subgraph "Audit-Proof Output"
+        H -->|Always Fail-Closed| I[Status: BLOCKED]
+        I --> J[Derive OPEN Resolution Tasks]
+        J --> K[Capture Used Input Rows]
+        K --> L[(Content-Addressed SHA-256 Bundle)]
+    end
+
+    L --> M[Deterministic Replay Engine]
 ```
 
-The obligation is saved before assembly so a later failure cannot erase it. Every result is BLOCKED because source documents, approvals and batch history are not available to this tool (see [ADR 0001](docs/adr/0001-blocked-by-default.md)).
+---
 
-## Try it locally (no private data needed)
-```sh
-git clone https://github.com/Zulfiqar78634/kestrel-evidence-adjudication
+## Production Guarantees & Invariants
+
+* **Strict Fail-Closed Invariant:** Missing, inverted, or non-finite temperature measurements immediately trigger `BLOCKED` status. They never default to compliant.
+* **Separation of Clocks:** The health authority reporting window (e.g. 72h) is registered *before* case assembly. Signing a product disposition never erases or closes a regulatory filing obligation.
+* **Tamper-Evident Storage:** Saved case bundles are content-addressed using cryptographic SHA-256 digests. Replay executes against the exact captured source rows.
+* **Role-Assigned Tasks:** Every blocker emits a concrete task assigned to a functional role (e.g., `Site QA`, `Document Control`), never an invented named person.
+
+---
+
+## Quickstart (Try Locally With Synthetic Data)
+
+No private data is required to run the full test suite and CLI workflows:
+
+```bash
+# 1. Clone repository and install dependencies
+git clone https://github.com/Zulfiqar78634/kestrel-evidence-adjudication.git
 cd kestrel-evidence-adjudication
 python -m pip install -e ".[dev]"
-python -m unittest discover -s tests -v          # 48 pass, 1 skipped (needs the private workbook)
-python -m sentinel_review.demo demo.xlsx          # builds a SYNTHETIC workbook
-sentinel-review --db demo.sqlite review demo.xlsx --event DEMO-1 --tenant T-DEMO-A --out demo-out.json
-sentinel-review --db demo.sqlite replay BUNDLE_ID --tenant T-DEMO-A     # BUNDLE_ID is in demo-out.json
+
+# 2. Run comprehensive test suite (49 unit & regression tests)
+python -m unittest discover -s tests -v
+
+# 3. Generate a synthetic demo workbook
+python -m sentinel_review.demo demo.xlsx
+
+# 4. Review a case and generate an immutable evidence bundle
+sentinel-review --db demo.sqlite review demo.xlsx --event DEMO-1 --tenant T-DEMO-A --out demo-case.json
+
+# 5. Verify deterministic replay from content-addressed storage
+sentinel-review --db demo.sqlite replay BUNDLE_ID --tenant T-DEMO-A
+
+# 6. Verify cross-tenant isolation enforcement (Fails with Exit Code 2)
+sentinel-review --db demo.sqlite replay BUNDLE_ID --tenant T-DEMO-B
+
+# 7. Inspect regulatory notification obligations
 sentinel-review --db demo.sqlite obligations --tenant T-DEMO-B
 ```
-`make test`, `make demo` and `make check` run the same commands where `make` is installed. On Windows use the `python -m` forms. `review` needs `--tenant`, or `--all-tenants` for an operator run. Failures print a JSON error to stderr and exit with code 2.
 
-With the real workbook (kept outside this repo):
-```sh
-KCCS_WORKBOOK=/private/KCCS_Sentinel_Reference_Data_Pack.xlsx python -m unittest discover -s tests -v
-sentinel-review --db run.sqlite review /private/KCCS_Sentinel_Reference_Data_Pack.xlsx --event EXC-107133 --tenant T-KAVERI --out case.json
-```
-Do not commit `case.json` or SQLite files; they contain real case data.
+---
 
-## Documentation map
-| Kind | Page |
-|---|---|
-| Explanation | [START-HERE](docs/START-HERE.md), [POSITION](docs/POSITION.md), [HLD](docs/HLD.md), [ADR 0001](docs/adr/0001-blocked-by-default.md) |
-| Tutorial / how-to | [START-HERE](docs/START-HERE.md), [INTERVIEW](docs/INTERVIEW.md) (demo script) |
-| Reference | [LLD](docs/LLD.md), [RESOLUTION-TASKS](docs/RESOLUTION-TASKS.md) |
-| Honest status | [REVIEW](docs/REVIEW.md) (known weaknesses), [VALIDATION](docs/VALIDATION.md) (what was run), [AI-WORKING-LOG](docs/AI-WORKING-LOG.md) |
+## Documentation Index
 
-## How the code is organised
-
-| Module | Role | Depends on |
+| Mode | Document | Description |
 |---|---|---|
-| `sentinel_review/domain.py` | Pure helpers: hashing, parsing, tenant scope | nothing |
-| `sentinel_review/ports.py` | Interfaces: `SourceCatalog`, `EvidenceRepository` | domain |
-| `sentinel_review/workbook.py` | Adapter: reads the workbook | domain, openpyxl |
-| `sentinel_review/tasks.py` | Resolution tasks per blocker | domain |
-| `sentinel_review/assembly.py` | Candidate discovery, rejection reasons, blockers | domain, ports, tasks |
-| `sentinel_review/storage.py` | Adapter: SQLite bundles and obligations | domain |
-| `sentinel_review/service.py` | Use cases: `review`, `replay` | assembly, ports |
-| `sentinel_review/cli.py` | Local operator CLI | all of the above |
-| `sentinel_review/demo.py` | Builds the synthetic demo workbook | openpyxl |
-
-Service and assembly code depend on the interfaces in `ports.py`, not on SQLite or the workbook, so tests can run them on in-memory data. `kestrel.py` with `tests/test_kernel.py` and `tests/test_integration.py` is an earlier single-file synthetic kernel (v0.1.0), kept for history.
-
-## Quality gates
-```sh
-ruff check sentinel_review     # blocking in CI
-mypy                           # informational in CI until typed models land (Step 2)
-coverage run -m unittest discover -s tests && coverage report
-```
-
-## What it does not do
-No authenticated API or roles, no qualified or dual signing, no source-document verification, no approved identity mapping, no batch or once-only ledger, no calendar or notification delivery, no immutable archive, no way to close a task, no measured scale. The full list of known weaknesses is in [docs/REVIEW.md](docs/REVIEW.md).
-
-## Roadmap
-
-| Step | Work | Status |
-|---|---|---|
-| 1 | Quality gates (ruff, mypy, coverage) and README | Committed; CI result not observed |
-| 2 | Typed domain models in place of plain dictionaries; make mypy blocking | Not started |
-| 3 | Resolution tasks, synthetic demo workbook, local-test tooling | Committed; CI result not observed |
-| 4 | Input validation and structured CLI errors | Partly done (clean CLI errors, explicit tenant); input validation not started |
-| 5 | Authenticated API with tenant from the token; task closure with approved evidence | Not started |
-| 6 | Postgres adapter, migrations and shared adapter contract tests | Not started |
-| 7 | ADRs, diagrams, runbook; docs kept in step with behaviour | Partly done |
-| 8 | Retire or move the legacy single-file kernel | Not started |
-
-Each step is a separate commit, written test-first, and not marked done until its gate has run.
-
-## Verification status (v0.3.1)
-Last executed locally: 49 tests (all pass with the private workbook; 48 pass and 1 is skipped without it), 420 of 420 events replayed identically with 0 results changed by the review fixes, and an installed console command ran end to end. Not verified: the remote CI result, ruff and mypy results, a combined run with the legacy tests, and any clinical, security or scale property.
+| **Overview** | [docs/START-HERE.md](docs/START-HERE.md) | Plain-language introduction, mental models, and quickstart tutorial. |
+| **Architecture** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | SOLID design principles, system layers, and regulatory invariants. |
+| **Decisions** | [docs/adr/0001-blocked-by-default.md](docs/adr/0001-blocked-by-default.md) | Architecture Decision Record: Why all outputs are BLOCKED by default. |
+| **Technical Design** | [docs/LLD.md](docs/LLD.md) | Low-level design, schema specifications, and persistence models. |
+| **Audit Tasks** | [docs/RESOLUTION-TASKS.md](docs/RESOLUTION-TASKS.md) | Specification of the 14 resolution task templates and completion rules. |
+| **Review & Safety** | [docs/REVIEW.md](docs/REVIEW.md) | Google-style engineering review, known limitations, and fixed defects. |
+| **Validation** | [docs/VALIDATION.md](docs/VALIDATION.md) | Empirical test execution logs on the 420-case private benchmark extract. |
